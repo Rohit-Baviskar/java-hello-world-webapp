@@ -1,0 +1,107 @@
+/*------------------------------------------------------------------------------
+Purpose : Pipeline Code for 
+********************************************************************************
+* Date            Author       Version    Comments
+********************************************************************************
+* 01-Mar-2020     Vinodh C     1.0        New Version
+********************************************************************************
+------------------------------------------------------------------------------*/
+
+def getTimeLog() {
+    now = new Date()
+    stage_time = now.format("HH:mm:ss")
+    return stage_time
+}
+
+pipeline {
+  
+        agent any
+        
+    
+        stages {
+            stage('Build:java-hello-world-webapp') {
+                steps {
+                    script {
+                        stage_time = getTimeLog()
+                    
+                        def now = new Date()
+                        start_time = now.format("yyyy-MM-dd HH:mm:ss.S")
+                        
+                        try {
+                            print("Stage 1: Build java-hello-world-webapp ... Started")
+                            
+                            withMaven(maven: 'apache-maven-3.6.3') {
+                                bat label: 'build_webapp', script: 'mvn clean install'
+                            }
+
+                            print("Stage 1: Build java-hello-world-webapp ... Succeeded")
+
+                        } catch (Exception e) {
+                            print("Stage 1: Build java-hello-world-webapp ... Failed")
+                        }
+                        
+                        print("Start Time:" + stage_time + " <<>> End Time:" +  getTimeLog())
+                    }
+                }
+            }
+
+            stage('Create:webapp-image') {
+                steps {
+                    script {
+                        stage_time = getTimeLog()
+                    
+                        def now = new Date()
+                        start_time = now.format("yyyy-MM-dd HH:mm:ss.S")
+                        
+                        try {
+                            print("Stage 2: Create webapp image ... Started")
+                            
+                            bat label: 'create_webapp_image', 
+                                script: 'docker image build -t vinodhdevaarul/java-hello-world-webapp:%BUILD_NUMBER% .'
+
+                            print("Stage 2: Create webapp image ... Succeeded")
+
+                        } catch (Exception e) {
+                            print("Stage 2: Create webapp image ... Failed" + e)
+                        }
+                        
+                        print("Start Time:" + stage_time + " <<>> End Time:" +  getTimeLog())
+                    }
+                }
+            }
+
+
+            stage('Push:webapp-to-docker-hub') {
+                steps {
+                    script {
+                        stage_time = getTimeLog()
+                    
+                        def now = new Date()
+                        start_time = now.format("yyyy-MM-dd HH:mm:ss.S")
+                        
+                        try {
+                            print("Stage 3: Push webapp to docker hub ... Started")
+                            
+                            withDockerRegistry(credentialsId: 'DH-VDA-UP-ID') {
+                                bat label: 'create_webapp_image', script: 'docker push vinodhdevaarul/java-hello-world-webapp:%BUILD_NUMBER%'
+                            }
+
+                            print("Stage 3: Push webapp to docker hub ... Succeeded")
+
+                        } catch (Exception e) {
+                            print("Stage 3: Push webapp to docker hub ... Failed")
+                        }
+                        
+                        print("Start Time:" + stage_time + " <<>> End Time:" +  getTimeLog())
+                    }
+                }
+            }
+        }
+    post {
+        always {
+            script {
+                echo "End Process ..."
+            }    
+        }
+    }    
+}
